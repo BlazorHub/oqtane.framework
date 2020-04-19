@@ -1,43 +1,36 @@
-﻿@using Microsoft.AspNetCore.Components.Web
-@using Oqtane.Modules.HtmlText.Services
-@using Oqtane.Modules
+﻿@using Oqtane.Modules.HtmlText.Services
 @using Oqtane.Modules.HtmlText.Models
-@using System.Net.Http;
-@using Oqtane.Modules.Controls
-@using Oqtane.Shared;
 @namespace Oqtane.Modules.HtmlText
 @inherits ModuleBase
 @inject NavigationManager NavigationManager
 @inject HttpClient http
 @inject SiteState sitestate
 
-<ModuleMessage Message="@message" />
-
 @((MarkupString)content)
 
 <br />
 <ActionLink Action="Edit" />
-<br />
-<br />
+<br /><br />
 
 @code {
-    string message = "";
-    string content;
+    private string content = "";
 
     protected override async Task OnParametersSetAsync()
     {
         try
         {
-            HtmlTextService htmltextservice = new HtmlTextService(http, sitestate, NavigationManager);
-            HtmlTextInfo htmltext = await htmltextservice.GetHtmlTextAsync(ModuleState.ModuleId);
+            var htmltextservice = new HtmlTextService(http, sitestate, NavigationManager);
+            var htmltext = await htmltextservice.GetHtmlTextAsync(ModuleState.ModuleId);
             if (htmltext != null)
             {
                 content = htmltext.Content;
+                content = content.Replace(Constants.ContentUrl, ((PageState.Alias.Path == "") ? "/~" : PageState.Alias.Path) + Constants.ContentUrl);
             }
         }
         catch (Exception ex)
         {
-            message = ex.Message;
+            await logger.LogError(ex, "An Error Occurred Loading Html/Text Content. " + ex.Message);
+            AddModuleMessage(ex.Message, MessageType.Error);
         }
     }
 }

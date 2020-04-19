@@ -12,15 +12,18 @@ namespace Oqtane.Repository
         public virtual DbSet<Module> Module { get; set; }
         public virtual DbSet<User> User { get; set; }
         public virtual DbSet<Profile> Profile { get; set; }
-        public virtual DbSet<SiteUser> SiteUser { get; set; }
         public virtual DbSet<Role> Role { get; set; }
         public virtual DbSet<UserRole> UserRole { get; set; }
         public virtual DbSet<Permission> Permission { get; set; }
         public virtual DbSet<Setting> Setting { get; set; }
+        public virtual DbSet<Log> Log { get; set; }
+        public virtual DbSet<Notification> Notification { get; set; }
+        public virtual DbSet<Folder> Folder { get; set; }
+        public virtual DbSet<File> File { get; set; }
 
-        public TenantDBContext(ITenantResolver TenantResolver, IHttpContextAccessor accessor) : base(TenantResolver, accessor)
+        public TenantDBContext(ITenantResolver tenantResolver, IHttpContextAccessor accessor) : base(tenantResolver, accessor)
         {
-            // ContextBase handles multi-tenant database connections
+            // DBContextBase handles multi-tenant database connections
         }
 
     }

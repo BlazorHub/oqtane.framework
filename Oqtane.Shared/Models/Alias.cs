@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Oqtane.Models
@@ -15,32 +16,10 @@ namespace Oqtane.Models
         public string ModifiedBy { get; set; }
         public DateTime ModifiedOn { get; set; }
 
-
         [NotMapped]
-        public string Scheme { get; set; }
-
+        public DateTime SyncDate { get; set; }
         [NotMapped]
-        public string Url
-        {
-            get
-            {
-                return Scheme + "://" + Name;
-            }
-        }
-
-        [NotMapped]
-        public string BaseUrl
-        {
-            get
-            {
-                string name = Name;
-                if (name.Contains("/"))
-                {
-                    name = name.Substring(0, name.IndexOf("/"));
-                }
-                return Scheme + "://" + name;
-            }
-        }
+        public List<SyncEvent> SyncEvents { get; set; }
 
         [NotMapped]
         public string Path
@@ -55,42 +34,6 @@ namespace Oqtane.Models
                 {
                     return "";
                 }
-            }
-        }
-
-        [NotMapped]
-        public string TenantRootPath
-        {
-            get
-            {
-                return "Tenants/" + TenantId.ToString() + "/";
-            }
-        }
-
-        [NotMapped]
-        public string TenantRootUrl
-        {
-            get
-            {
-                return BaseUrl + "/Tenants/" + TenantId.ToString() + "/";
-            }
-        }
-
-        [NotMapped]
-        public string SiteRootPath
-        {
-            get
-            {
-                return "Tenants/" + TenantId.ToString() + "/Sites/" + SiteId.ToString() + "/";
-            }
-        }
-
-        [NotMapped]
-        public string SiteRootUrl
-        {
-            get
-            {
-                return BaseUrl + "/Tenants/" + TenantId.ToString() + "/Sites/" + SiteId.ToString() + "/";
             }
         }
     }

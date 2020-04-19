@@ -1,73 +1,173 @@
-﻿@using Microsoft.AspNetCore.Components.Routing
-@using Microsoft.AspNetCore.Components.Web
-@using Oqtane.Modules
-@using Oqtane.Modules.Controls
-@using Oqtane.Modules.HtmlText.Services
+﻿@using Oqtane.Modules.HtmlText.Services
 @using Oqtane.Modules.HtmlText.Models
-@using System.Net.Http;
-@using Oqtane.Shared;
+@using Oqtane.Modules.Controls
 @namespace Oqtane.Modules.HtmlText
 @inherits ModuleBase
 @inject NavigationManager NavigationManager
 @inject HttpClient http
 @inject SiteState sitestate
 
-<ModuleMessage Message="@message" />
+<div class="row" style="margin-bottom: 50px;">
+    <div class="col @_visibleText">
+        <textarea class="form-control" @bind="@content" rows="10"></textarea>
+    </div>
 
-<table class="form-group">
-    <tr>
-        <td>
-            <label for="Name" class="control-label">Content: </label>
-        </td>
-        <td>
-            <textarea class="form-control" @bind="@content" rows="5" style="width:400px;" />
-        </td>
-    </tr>
-</table>
-<button type="button" class="btn btn-success" @onclick="SaveContent">Save</button>
-<NavLink class="btn btn-secondary" href="@NavigateUrl()">Cancel</NavLink>
-<br />
-<br />
-<AuditInfo CreatedBy="@createdby" CreatedOn="@createdon" ModifiedBy="@modifiedby" ModifiedOn="@modifiedon"></AuditInfo>
+    <div class="col @_visibleRich">
+        <RichTextEditor @ref="@RichTextEditorHtml">
+            <ToolbarContent>
+                <select class="ql-header">
+                    <option selected=string.Empty></option>
+                    <option value="1"></option>
+                    <option value="2"></option>
+                    <option value="3"></option>
+                    <option value="4"></option>
+                    <option value="5"></option>
+                </select>
+                <span class="ql-formats">
+                    <button class="ql-bold"></button>
+                    <button class="ql-italic"></button>
+                    <button class="ql-underline"></button>
+                    <button class="ql-strike"></button>
+                </span>
+                <span class="ql-formats">
+                    <select class="ql-color"></select>
+                    <select class="ql-background"></select>
+                </span>
+                <span class="ql-formats">
+                    <button class="ql-list" value="ordered"></button>
+                    <button class="ql-list" value="bullet"></button>
+                </span>
+                <span class="ql-formats">
+                    <button class="ql-link"></button>
+                </span>
+            </ToolbarContent>
+        </RichTextEditor>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col">
+        @if (!RichTextEditorMode)
+        {
+            <button type="button" class="btn btn-secondary" @onclick="RichTextEditor">Rich Text Editor</button>
+        }
+        else
+        {
+            <button type="button" class="btn btn-secondary" @onclick="RawHtmlEditor">Raw HTML Editor</button>
+        }
+        <button type="button" class="btn btn-success" @onclick="SaveContent">Save</button>        
+        <NavLink class="btn btn-secondary" href="@NavigateUrl()">Cancel</NavLink>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col">
+        <AuditInfo CreatedBy="@createdby" CreatedOn="@createdon" ModifiedBy="@modifiedby" ModifiedOn="@modifiedon"></AuditInfo>
+    </div>
+</div>
 
 @code {
-    public override SecurityAccessLevel SecurityAccessLevel { get { return SecurityAccessLevel.Edit; } }
-    public override string Title { get { return "Edit Html/Text"; } }
+    private string _visibleText = "d-none";
+    private string _visibleRich;
+    private bool _richTextEditorMode;
+    private RichTextEditor RichTextEditorHtml;
+    private string content;
+    private string createdby;
+    private DateTime createdon;
+    private string modifiedby;
+    private DateTime modifiedon;
 
-    string message = "";
-    string content;
-    string createdby;
-    DateTime createdon;
-    string modifiedby;
-    DateTime modifiedon;
+    public override SecurityAccessLevel SecurityAccessLevel => SecurityAccessLevel.Edit;
 
-    protected override async Task OnInitializedAsync()
+    public override string Title => "Edit Html/Text";
+
+    public bool RichTextEditorMode
+    {
+        get => _richTextEditorMode;
+        set
+        {
+            _richTextEditorMode = value;
+            
+            if (_richTextEditorMode)
+            {
+                _visibleText = "d-none";
+                _visibleRich = string.Empty;
+            }
+            else
+            {
+                _visibleText = string.Empty;
+                _visibleRich = "d-none";
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         try
         {
-            HtmlTextService htmltextservice = new HtmlTextService(http, sitestate, NavigationManager);
-            HtmlTextInfo htmltext = await htmltextservice.GetHtmlTextAsync(ModuleState.ModuleId);
-            if (htmltext != null)
+            if (firstRender)
             {
-                content = htmltext.Content;
-                createdby = htmltext.CreatedBy;
-                createdon = htmltext.CreatedOn;
-                modifiedby = htmltext.ModifiedBy;
-                modifiedon = htmltext.ModifiedOn;
+                if (content == null)
+                {
+                    RichTextEditorMode = true;
+                    await LoadText();
+                }
             }
         }
         catch (Exception ex)
         {
-            message = ex.Message;
+            await logger.LogError(ex, "An Error Occurred Loading Html/Text Content. " + ex.Message);
+            AddModuleMessage(ex.Message, MessageType.Error);
         }
+    }
+
+    private async Task LoadText()
+    {
+        var htmltextservice = new HtmlTextService(http, sitestate, NavigationManager);
+        var htmltext = await htmltextservice.GetHtmlTextAsync(ModuleState.ModuleId);
+        if (htmltext != null)
+        {
+            content = htmltext.Content;
+            createdby = htmltext.CreatedBy;
+            createdon = htmltext.CreatedOn;
+            modifiedby = htmltext.ModifiedBy;
+            modifiedon = htmltext.ModifiedOn;
+
+            if (RichTextEditorMode)
+            {
+                await RichTextEditorHtml.LoadContent(content);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task RichTextEditor()
+    {
+        RichTextEditorMode = true;
+        await RichTextEditorHtml.LoadContent(content);
+        StateHasChanged();
+    }
+
+    private async Task RawHtmlEditor()
+    {
+        content = await this.RichTextEditorHtml.GetHtml();
+        RichTextEditorMode = false;
+        StateHasChanged();
     }
 
     private async Task SaveContent()
     {
+        if (RichTextEditorMode)
+        {
+            content = await RichTextEditorHtml.GetHtml();
+        }
+
+        content = content.Replace(((PageState.Alias.Path == string.Empty) ? "/~" : PageState.Alias.Path) + Constants.ContentUrl, Constants.ContentUrl);
+
         try
         {
-            HtmlTextService htmltextservice = new HtmlTextService(http, sitestate, NavigationManager);
-            HtmlTextInfo htmltext = await htmltextservice.GetHtmlTextAsync(ModuleState.ModuleId);
+            var htmltextservice = new HtmlTextService(http, sitestate, NavigationManager);
+            var htmltext = await htmltextservice.GetHtmlTextAsync(ModuleState.ModuleId);
             if (htmltext != null)
             {
                 htmltext.Content = content;
@@ -80,11 +180,15 @@
                 htmltext.Content = content;
                 await htmltextservice.AddHtmlTextAsync(htmltext);
             }
-            NavigationManager.NavigateTo(NavigateUrl(Reload.Page));
+            
+            await logger.LogInformation("Html/Text Content Saved {HtmlText}", htmltext);
+            NavigationManager.NavigateTo(NavigateUrl());
         }
         catch (Exception ex)
         {
-            message = ex.Message;
+            await logger.LogError(ex, "Error Saving Content {Error}", ex.Message);
+            AddModuleMessage("Error Saving Content", MessageType.Error);
         }
     }
+
 }

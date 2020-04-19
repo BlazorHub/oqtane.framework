@@ -1,6 +1,5 @@
-﻿using Oqtane.Modules;
+﻿using Oqtane.Shared;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Oqtane.Models
@@ -15,6 +14,13 @@ namespace Oqtane.Models
         public DateTime CreatedOn { get; set; }
         public string ModifiedBy { get; set; }
         public DateTime ModifiedOn { get; set; }
+        
+        [NotMapped]
+        public string DeletedBy { get; set; }
+        [NotMapped]
+        public DateTime? DeletedOn { get; set; }
+        [NotMapped]
+        public bool IsDeleted { get; set; }
 
         [NotMapped]
         public string Permissions { get; set; }
@@ -40,6 +46,10 @@ namespace Oqtane.Models
         public int PaneModuleIndex { get; set; }
         [NotMapped]
         public int PaneModuleCount { get; set; }
+
+        // ModuleDefinition
+        [NotMapped]
+        public ModuleDefinition ModuleDefinition { get; set; }
 
         // IModuleControl properties
         [NotMapped]

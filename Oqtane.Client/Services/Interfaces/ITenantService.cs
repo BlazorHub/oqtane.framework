@@ -8,6 +8,12 @@ namespace Oqtane.Services
     {
         Task<List<Tenant>> GetTenantsAsync();
 
-        Task<Tenant> GetTenantAsync();
+        Task<Tenant> GetTenantAsync(int tenantId);
+
+        Task<Tenant> AddTenantAsync(Tenant tenant);
+
+        Task<Tenant> UpdateTenantAsync(Tenant tenant);
+
+        Task DeleteTenantAsync(int tenantId);
     }
 }

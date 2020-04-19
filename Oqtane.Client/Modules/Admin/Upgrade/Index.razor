@@ -1,0 +1,59 @@
+﻿@namespace Oqtane.Modules.Admin.Upgrade
+@inherits ModuleBase
+@inject NavigationManager NavigationManager
+@inject IFileService FileService
+@inject IPackageService PackageService
+@inject IInstallationService InstallationService
+
+<table class="table table-borderless">
+    <tr>
+        <td>
+            <Label For="framework" HelpText="Upload a framework to update the site">Framework: </Label>
+        </td>
+        <td>
+            <FileManager Filter="nupkg" ShowFiles="false" Folder="Framework" />
+        </td>
+    </tr>
+</table>
+<button type="button" class="btn btn-success" @onclick="Upgrade">Upgrade</button>
+
+@if (upgradeavailable)
+{
+    <hr class="app-rule" />
+    <div class="mx-auto text-center"><h2>Upgrade Available</h2></div>
+
+    <button type="button" class="btn btn-success" @onclick=@(async () => await Download(Constants.PackageId, Constants.Version))>Upgrade Framework</button>
+}
+
+@code {
+    private bool upgradeavailable = false;
+
+    public override SecurityAccessLevel SecurityAccessLevel => SecurityAccessLevel.Host;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var packages = await PackageService.GetPackagesAsync("framework");
+        var package = packages.FirstOrDefault();
+        if (package != null)
+        {
+            upgradeavailable = (Version.Parse(package.Version).CompareTo(Version.Parse(Constants.Version)) > 0);
+        }
+        if (!upgradeavailable)
+        {
+            AddModuleMessage("Framework Is Up To Date", MessageType.Info);
+        }
+    }
+
+    private async Task Upgrade()
+    {
+        await InstallationService.Upgrade();
+        NavigationManager.NavigateTo(NavigateUrl());
+    }
+
+    private async Task Download(string packageid, string version)
+    {
+        await PackageService.DownloadPackageAsync(packageid, version, "Framework");
+        await InstallationService.Upgrade();
+        NavigationManager.NavigateTo(NavigateUrl());
+    }
+}

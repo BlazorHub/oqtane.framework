@@ -1,65 +1,70 @@
 ﻿using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Oqtane.Repository;
+using Oqtane.Enums;
 using Oqtane.Models;
 using Oqtane.Shared;
+using Oqtane.Infrastructure;
+using Oqtane.Repository;
 
 namespace Oqtane.Controllers
 {
     [Route("{site}/api/[controller]")]
     public class UserRoleController : Controller
     {
-        private readonly IUserRoleRepository UserRoles;
+        private readonly IUserRoleRepository _userRoles;
+        private readonly ISyncManager _syncManager;
+        private readonly ILogManager _logger;
 
-        public UserRoleController(IUserRoleRepository UserRoles)
+        public UserRoleController(IUserRoleRepository userRoles, ISyncManager syncManager, ILogManager logger)
         {
-            this.UserRoles = UserRoles;
+            _userRoles = userRoles;
+            _syncManager = syncManager;
+            _logger = logger;
         }
 
         // GET: api/<controller>?userid=x
         [HttpGet]
-        public IEnumerable<UserRole> Get(string userid)
+        [Authorize]
+        public IEnumerable<UserRole> Get(string siteid)
         {
-            if (userid == "")
-            {
-                return UserRoles.GetUserRoles();
-            }
-            else
-            {
-                return UserRoles.GetUserRoles(int.Parse(userid));
-            }
+            return _userRoles.GetUserRoles(int.Parse(siteid));
         }
         
         // GET api/<controller>/5
         [HttpGet("{id}")]
+        [Authorize]
         public UserRole Get(int id)
         {
-            return UserRoles.GetUserRole(id);
+            return _userRoles.GetUserRole(id);
         }
 
         // POST api/<controller>
         [HttpPost]
         [Authorize(Roles = Constants.AdminRole)]
-        public UserRole Post([FromBody] UserRole UserRole)
+        public UserRole Post([FromBody] UserRole userRole)
         {
             if (ModelState.IsValid)
             {
-                UserRole = UserRoles.AddUserRole(UserRole);
+                userRole = _userRoles.AddUserRole(userRole);
+                _syncManager.AddSyncEvent(EntityNames.User, userRole.UserId);
+                _logger.Log(LogLevel.Information, this, LogFunction.Create, "User Role Added {UserRole}", userRole);
             }
-            return UserRole;
+            return userRole;
         }
 
         // PUT api/<controller>/5
         [HttpPut("{id}")]
         [Authorize(Roles = Constants.AdminRole)]
-        public UserRole Put(int id, [FromBody] UserRole UserRole)
+        public UserRole Put(int id, [FromBody] UserRole userRole)
         {
             if (ModelState.IsValid)
             {
-                UserRole = UserRoles.UpdateUserRole(UserRole);
+                userRole = _userRoles.UpdateUserRole(userRole);
+                _syncManager.AddSyncEvent(EntityNames.User, userRole.UserId);
+                _logger.Log(LogLevel.Information, this, LogFunction.Update, "User Role Updated {UserRole}", userRole);
             }
-            return UserRole;
+            return userRole;
         }
 
         // DELETE api/<controller>/5
@@ -67,7 +72,10 @@ namespace Oqtane.Controllers
         [Authorize(Roles = Constants.AdminRole)]
         public void Delete(int id)
         {
-            UserRoles.DeleteUserRole(id);
+            UserRole userRole = _userRoles.GetUserRole(id);
+            _userRoles.DeleteUserRole(id);
+            _syncManager.AddSyncEvent(EntityNames.User, userRole.UserId);
+            _logger.Log(LogLevel.Information, this, LogFunction.Delete, "User Role Deleted {UserRole}", userRole);
         }
     }
 }

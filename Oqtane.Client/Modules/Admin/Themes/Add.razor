@@ -1,50 +1,74 @@
-﻿@using Microsoft.AspNetCore.Components.Routing
-@using Microsoft.AspNetCore.Components.Web
-@using Oqtane.Modules.Controls
-@using Oqtane.Modules
-@using Oqtane.Services
-@using Oqtane.Shared
-@namespace Oqtane.Modules.Admin.Themes
+﻿@namespace Oqtane.Modules.Admin.Themes
 @inherits ModuleBase
 @inject NavigationManager NavigationManager
 @inject IFileService FileService
 @inject IThemeService ThemeService
+@inject IPackageService PackageService
 
 <table class="table table-borderless">
     <tr>
         <td>
-            <label for="Name" class="control-label">Theme: </label>
+            <Label For="theme" HelpText="Upload a theme from your system">Theme: </Label>
         </td>
         <td>
-            <FileUpload Filter=".nupkg"></FileUpload>
+            <FileManager Filter="nupkg"  ShowFiles="false" Folder="Themes" />
         </td>
     </tr>
 </table>
-@if (uploaded)
+
+@if (packages != null)
 {
-    <button type="button" class="btn btn-success" @onclick="InstallFile">Install</button>
+    <hr class="app-rule" />
+    <div class="mx-auto text-center"><h2>Available Themes</h2></div>
+
+    <Pager Items="@packages">
+        <Header>
+            <th>Name</th>
+            <th>Version</th>
+            <th></th>
+        </Header>
+        <Row>
+            <td>@context.Name</td>
+            <td>@context.Version</td>
+            <td>
+                <button type="button" class="btn btn-primary" @onclick=@(async () => await DownloadTheme(context.PackageId, context.Version))>Download Theme</button>
+            </td>
+        </Row>
+    </Pager>
 }
-else
-{
-    <button type="button" class="btn btn-success" @onclick="UploadFile">Upload</button>
-}
+
+<button type="button" class="btn btn-success" @onclick="InstallThemes">Install</button>
 <NavLink class="btn btn-secondary" href="@NavigateUrl()">Cancel</NavLink>
 
 @code {
-    public override SecurityAccessLevel SecurityAccessLevel { get { return SecurityAccessLevel.Host; } }
+    private List<Package> packages;
 
-    bool uploaded = false;
+    public override SecurityAccessLevel SecurityAccessLevel => SecurityAccessLevel.Host;
 
-    private async Task UploadFile()
+    protected override async Task OnInitializedAsync()
     {
-        await FileService.UploadFilesAsync("Themes");
-        uploaded = true;
-        StateHasChanged();
+        var themes = await ThemeService.GetThemesAsync();
+        packages = await PackageService.GetPackagesAsync("theme");
+        
+        foreach(Package package in packages.ToArray())
+        {
+            if (themes.Exists(item => Utilities.GetTypeName(item.ThemeName) == package.PackageId))
+            {
+                packages.Remove(package);
+            }
+        }
     }
 
-    private async Task InstallFile()
+    private async Task InstallThemes()
     {
         await ThemeService.InstallThemesAsync();
-        NavigationManager.NavigateTo(NavigateUrl(Reload.Application));
+        NavigationManager.NavigateTo(NavigateUrl());
+    }
+
+    private async Task DownloadTheme(string packageid, string version)
+    {
+        await PackageService.DownloadPackageAsync(packageid, version, "Themes");
+        AddModuleMessage("Theme Downloaded Successfully. Click Install To Complete Installation.", MessageType.Success);
+        StateHasChanged();
     }
 }

@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Oqtane.Modules.HtmlText.Models;
 using Oqtane.Repository;
-using Oqtane.Modules;
 using Microsoft.AspNetCore.Http;
 
 namespace Oqtane.Modules.HtmlText.Repository
@@ -10,7 +9,7 @@ namespace Oqtane.Modules.HtmlText.Repository
     {
         public virtual DbSet<HtmlTextInfo> HtmlText { get; set; }
 
-        public HtmlTextContext(ITenantResolver TenantResolver, IHttpContextAccessor accessor) : base(TenantResolver, accessor)
+        public HtmlTextContext(ITenantResolver tenantResolver, IHttpContextAccessor accessor) : base(tenantResolver, accessor)
         {
             // ContextBase handles multi-tenant database connections
         }

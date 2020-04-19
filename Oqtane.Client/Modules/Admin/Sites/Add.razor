@@ -1,119 +1,312 @@
-﻿@using Microsoft.AspNetCore.Components.Routing
-@using Microsoft.AspNetCore.Components.Web
-@using Oqtane.Models
-@using Oqtane.Services
-@using Oqtane.Modules
-@using Oqtane.Shared
-@using Oqtane.Security
-@namespace Oqtane.Modules.Admin.Sites
+﻿@namespace Oqtane.Modules.Admin.Sites
 @inherits ModuleBase
 @inject NavigationManager NavigationManager
 @inject ITenantService TenantService
 @inject IAliasService AliasService
 @inject ISiteService SiteService
-@inject IPageService PageService
+@inject IThemeService  ThemeService
+@inject ISiteTemplateService SiteTemplateService 
+@inject IUserService UserService
 
-@if (tenants == null)
+@if (_tenants == null)
 {
     <p><em>Loading...</em></p>
 }
 else
 {
-    <table class="table table-borderless">
+<table class="table table-borderless">
+    <tr>
+        <td>
+            <Label For="tenant" HelpText="Select the tenant for the site">Tenant: </Label>
+        </td>
+        <td>
+            <select id="tenant" class="form-control" @onchange="(e => TenantChanged(e))">
+                <option value="-1">&lt;Select Tenant&gt;</option>
+                @foreach (Tenant tenant in _tenants)
+                {
+                    <option value="@tenant.TenantId">@tenant.Name</option>
+                }
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <Label For="name" HelpText="Enter the name of the site">Name: </Label>
+        </td>
+        <td>
+            <input id="name" class="form-control" @bind="@_name" />
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <Label For="alias" HelpText="Enter the alias for the server">Aliases: </Label>
+        </td>
+        <td>
+            <textarea id="alias" class="form-control" @bind="@_urls" rows="3"></textarea>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <Label For="defaultTheme" HelpText="Select the default theme for the website">Default Theme: </Label>
+        </td>
+        <td>
+            <select id="defaultTheme" class="form-control" @onchange="(e => ThemeChanged(e))">
+                <option value="">&lt;Select Theme&gt;</option>
+                @foreach (KeyValuePair<string, string> item in _themes)
+                {
+                    <option value="@item.Key">@item.Value</option>
+                }
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <Label For="defaultLayout" HelpText="Select the default layout for the site">Default Layout: </Label>
+        </td>
+        <td>
+            <select id="defaultLayout" class="form-control" @bind="@_layouttype">
+                <option value="">&lt;Select Layout&gt;</option>
+                @foreach (KeyValuePair<string, string> panelayout in _panelayouts)
+                {
+                    <option value="@panelayout.Key">@panelayout.Value</option>
+                }
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <Label For="defaultContainer" HelpText="Select the default container for the site">Default Container: </Label>
+        </td>
+        <td>
+            <select id="defaultContainer" class="form-control" @bind="@_containertype">
+                <option value="">&lt;Select Container&gt;</option>
+                @foreach (KeyValuePair<string, string> container in _containers)
+                {
+                    <option value="@container.Key">@container.Value</option>
+                }
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <Label For="siteTemplate" HelpText="Select the site template">Site Template: </Label>
+        </td>
+        <td>
+            <select id="siteTemplate" class="form-control" @bind="@_sitetemplatetype">
+                <option value="">&lt;Select Site Template&gt;</option>
+                @foreach (SiteTemplate siteTemplate in _siteTemplates)
+                {
+                    <option value="@siteTemplate.TypeName">@siteTemplate.Name</option>
+                }
+            </select>
+        </td>
+    </tr>
+    @if (!_isinitialized)
+    {
         <tr>
             <td>
-                <label for="Name" class="control-label">Tenant: </label>
+                <Label For="hostUsername" HelpText="Enter the username of the host for this site">Host Username:</Label>
             </td>
             <td>
-                <select class="form-control" @bind="@tenantid">
-                    <option value="">&lt;Select Tenant&gt;</option>
-                    @foreach (Tenant tenant in tenants)
-                    {
-                        <option value="@tenant.TenantId">@tenant.Name</option>
-                    }
-                </select>
+                <input id="hostUsername" class="form-control" @bind="@_username" readonly />
             </td>
         </tr>
         <tr>
             <td>
-                <label for="Name" class="control-label">Name: </label>
+                <Label For="hostPassword" HelpText="Enter the password for the host of this site">Host Password:</Label>
             </td>
             <td>
-                <input class="form-control" @bind="@name" />
+                <input id="hostPassword" type="password" class="form-control" @bind="@_password" />
             </td>
         </tr>
-        <tr>
-            <td>
-                <label for="Name" class="control-label">Alias: </label>
-            </td>
-            <td>
-                <input class="form-control" @bind="@url" />
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <label for="Name" class="control-label">Logo: </label>
-            </td>
-            <td>
-                <input class="form-control" @bind="@logo" />
-            </td>
-        </tr>
-    </table>
+    }
+</table>
     <button type="button" class="btn btn-success" @onclick="SaveSite">Save</button>
     <NavLink class="btn btn-secondary" href="@NavigateUrl()">Cancel</NavLink>
 }
 
 @code {
-    public override SecurityAccessLevel SecurityAccessLevel { get { return SecurityAccessLevel.Host; } }
+    private Dictionary<string, string> _themes = new Dictionary<string, string>();
+    private Dictionary<string, string> _panelayouts = new Dictionary<string, string>();
+    private Dictionary<string, string> _containers = new Dictionary<string, string>();
+    private List<SiteTemplate> _siteTemplates;
+    private List<Theme> _themeList;
+    private List<Tenant> _tenants;
+    private string _tenantid = "-1";
+    private string _name = string.Empty;
+    private string _urls = string.Empty;
+    private string _themetype = string.Empty;
+    private string _layouttype = string.Empty;
+    private string _containertype = string.Empty;
+    private string _sitetemplatetype = string.Empty;
+    private bool _isinitialized = true;
+    private string _username = string.Empty;
+    private string _password = string.Empty;
 
-    List<Tenant> tenants;
-    string tenantid = "";
-    string name = "";
-    string url = "";
-    string logo = "";
+    public override SecurityAccessLevel SecurityAccessLevel => SecurityAccessLevel.Host;
 
     protected override async Task OnInitializedAsync()
     {
-        tenants = await TenantService.GetTenantsAsync();
+        _themeList = await ThemeService.GetThemesAsync();
+        _tenants = await TenantService.GetTenantsAsync();
+        _urls = PageState.Alias.Name;
+        _themes = ThemeService.GetThemeTypes(_themeList);
+        _containers = ThemeService.GetContainerTypes(_themeList);
+        _siteTemplates = await SiteTemplateService.GetSiteTemplatesAsync();
+        _username = Constants.HostUser;
+    }
+
+    private async void TenantChanged(ChangeEventArgs e)
+    {
+        try
+        {
+            _tenantid = (string)e.Value;
+            if (_tenantid != "-1")
+            {
+                var tenant = _tenants.FirstOrDefault(item => item.TenantId == int.Parse(_tenantid));
+                if (tenant != null)
+                {
+                    _isinitialized = tenant.IsInitialized;
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Loading Tenant {TenantId} {Error}", _tenantid, ex.Message);
+            AddModuleMessage("Error Loading Tenant", MessageType.Error);
+        }
+    }
+
+    private async void ThemeChanged(ChangeEventArgs e)
+    {
+        try
+        {
+            _themetype = (string)e.Value;
+            if (_themetype != string.Empty)
+            {
+                _panelayouts = ThemeService.GetPaneLayoutTypes(_themeList, _themetype);
+            }
+            else
+            {
+                _panelayouts = new Dictionary<string, string>();
+            }
+            
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Loading Pane Layouts For Theme {ThemeType} {Error}", _themetype, ex.Message);
+            AddModuleMessage("Error Loading Pane Layouts For Theme", MessageType.Error);
+        }
     }
 
     private async Task SaveSite()
     {
-        Site site = new Site();
-        site.Name = name;
-        site.Logo = (logo == null ? "" : logo);
-        await SiteService.AddSiteAsync(site);
-        List<Site> sites = await SiteService.GetSitesAsync();
-        site = sites.Where(item => item.Name == name).FirstOrDefault();
+        if (_tenantid != "-1" && _name != string.Empty && _urls != string.Empty && !string.IsNullOrEmpty(_themetype) && (_panelayouts.Count == 0 || !string.IsNullOrEmpty(_layouttype)) && !string.IsNullOrEmpty(_containertype) && !string.IsNullOrEmpty(_sitetemplatetype))
+        {
+            var unique = true;
+            var aliases = await AliasService.GetAliasesAsync();
+            foreach (string name in _urls.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (aliases.Exists(item => item.Name == name))
+                {
+                    unique = false;
+                }
+            }
+            
+            if (unique)
+            {
+                var isvalid = true;
 
-        Alias alias = new Alias();
-        alias.Name = url;
-        alias.TenantId = int.Parse(tenantid);
-        alias.SiteId = site.SiteId;
-        await AliasService.AddAliasAsync(alias);
+                if (!_isinitialized)
+                {
+                    var user = new User();
+                    user.SiteId = PageState.Site.SiteId;
+                    user.Username = _username;
+                    user.Password = _password;
+                    user = await UserService.LoginUserAsync(user, false, false);
+                    isvalid = user.IsAuthenticated;
+                }
 
-        // need to add a home page and admin pages
-        Page p = new Page();
-        p.SiteId = site.SiteId;
-        p.ParentId = null;
-        p.Name = "Home";
-        p.Path = "";
-        p.Order = 1;
-        p.IsNavigation = true;
-        p.ThemeType = PageState.Site.DefaultThemeType;
-        p.LayoutType = "";
-        p.Icon = "";
-        Type type = Type.GetType(p.ThemeType);
-        System.Reflection.PropertyInfo property = type.GetProperty("Panes");
-        p.Panes = (string)property.GetValue(Activator.CreateInstance(type), null);
+                if (isvalid)
+                {
+                    ShowProgressIndicator();
 
-        List<PermissionString> permissionstrings = new List<PermissionString>();
-        permissionstrings.Add(new PermissionString { PermissionName = "View", Permissions = Constants.AllUsersRole });
-        permissionstrings.Add(new PermissionString { PermissionName = "Edit", Permissions = Constants.AdminRole });
-        p.Permissions = UserSecurity.SetPermissionStrings(permissionstrings);
+                    aliases = new List<Alias>();
+                    _urls = _urls.Replace("\n", ",");
+                    
+                    foreach (string name in _urls.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var alias = new Alias();
+                        alias.Name = name;
+                        alias.TenantId = int.Parse(_tenantid);
+                        alias.SiteId = -1;
+                        alias = await AliasService.AddAliasAsync(alias);
+                        aliases.Add(alias);
+                    }
 
-        await PageService.AddPageAsync(p);
+                    var site = new Site();
+                    site.TenantId = int.Parse(_tenantid);
+                    site.Name = _name;
+                    site.LogoFileId = null;
+                    site.FaviconFileId = null;
+                    site.DefaultThemeType = _themetype;
+                    site.DefaultLayoutType = (_layouttype == null ? string.Empty : _layouttype);
+                    site.DefaultContainerType = _containertype;
+                    site.PwaIsEnabled = false;
+                    site.PwaAppIconFileId = null;
+                    site.PwaSplashIconFileId = null;
+                    site.AllowRegistration = false;
+                    site.SiteTemplateType = _sitetemplatetype;
+                    site = await SiteService.AddSiteAsync(site, aliases[0]);
 
-        NavigationManager.NavigateTo(url, true);
+                    foreach (Alias alias in aliases)
+                    {
+                        alias.SiteId = site.SiteId;
+                        await AliasService.UpdateAliasAsync(alias);
+                    }
+
+                    if (!_isinitialized)
+                    {
+                        var user = new User();
+                        user.SiteId = site.SiteId;
+                        user.Username = _username;
+                        user.Password = _password;
+                        user.Email = PageState.User.Email;
+                        user.DisplayName = PageState.User.DisplayName;
+                        user = await UserService.AddUserAsync(user, aliases[0]);
+
+                        if (user != null)
+                        {
+                            var tenant = _tenants.FirstOrDefault(item => item.TenantId == int.Parse(_tenantid));
+                            if (tenant != null)
+                            {
+                                tenant.IsInitialized = true;
+                                await TenantService.UpdateTenantAsync(tenant);
+                            }
+                        }
+                    }
+                    
+                    await Log(aliases[0], LogLevel.Information, string.Empty, null, "Site Created {Site}", site);
+
+                    var uri = new Uri(NavigationManager.Uri);
+                    NavigationManager.NavigateTo(uri.Scheme + "://" + aliases[0].Name, true);
+                }
+                else
+                {
+                    await logger.LogError("Invalid Password Entered For Host {Username}", _username);
+                    AddModuleMessage("Invalid Host Password", MessageType.Error);
+                }
+            }
+            else
+            {
+                AddModuleMessage("An Alias Specified Has Already Been Used For Another Site", MessageType.Warning);
+            }
+        }
+        else
+        {
+            AddModuleMessage("You Must Provide A Tenant, Site Name, Alias, Default Theme/Container, And Site Template", MessageType.Warning);
+        }
     }
 }

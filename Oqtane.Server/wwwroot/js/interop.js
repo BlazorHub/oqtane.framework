@@ -20,6 +20,102 @@ window.interop = {
         }
         return "";
     },
+    updateTitle: function (title) {
+        if (document.title !== title) {
+            document.title = title;
+        }
+    },
+    includeMeta: function (id, attribute, name, content) {
+        var meta;
+        if (id !== "") {
+            meta = document.getElementById(id);
+        }
+        else {
+            meta = document.querySelector("meta[" + attribute + "=\"" + CSS.escape(name) + "\"]");
+        }
+        if (meta === null) {
+            meta = document.createElement("meta");
+            meta.setAttribute(attribute, name);
+            if (id !== "") {
+                meta.id = id;
+            }
+            meta.content = content;
+            document.head.appendChild(meta);
+        }
+        else {
+            if (meta.content !== content) {
+                meta.setAttribute("content", content);
+            }
+        }
+    },
+    includeLink: function (id, rel, url, type) {
+        var link;
+        if (id !== "") {
+            link = document.getElementById(id);
+        }
+        else {
+            link = document.querySelector("link[href=\"" + CSS.escape(url) + "\"]");
+        }
+        if (link === null) {
+            link = document.createElement("link");
+            if (id !== "") {
+                link.id = id;
+            }
+            link.rel = rel;
+            link.href = url;
+            if (type !== "") {
+                link.type = type;
+            }
+            document.head.appendChild(link);
+        }
+        else {
+            if (link.rel !== rel) {
+                link.setAttribute('rel', rel);
+            }
+            if (link.href !== url) {
+                link.setAttribute('href', url);
+            }
+            if (type !== "" && link.type !== type) {
+                link.setAttribute('type', type);
+            }
+        }
+    },
+    includeScript: function (id, src, content, location) {
+        var script;
+        if (id !== "") {
+            script = document.getElementById(id);
+        }
+        if (script === null) {
+            script = document.createElement("script");
+            if (id !== "") {
+                script.id = id;
+            }
+            if (src !== "") {
+                script.src = src;
+            }
+            else {
+                script.innerHTML = content;
+            }
+            if (location === 'head') {
+                document.head.appendChild(script);
+            }
+            if (location === 'body') {
+                document.body.appendChild(script);
+            }
+        }
+        else {
+            if (src !== "") {
+                if (script.src !== src) {
+                    script.src = src;
+                }
+            }
+            else {
+                if (script.innerHTML !== content) {
+                    script.innerHTML = content;
+                }
+            }
+        }
+    },
     getElementByName: function (name) {
         var elements = document.getElementsByName(name);
         if (elements.length) {
@@ -27,16 +123,6 @@ window.interop = {
         } else {
             return "";
         }
-    },
-    addCSS: function (fileName) {
-        var head = document.head;
-        var link = document.createElement("link");
-
-        link.type = "text/css";
-        link.rel = "stylesheet";
-        link.href = fileName;
-
-        head.appendChild(link);
     },
     submitForm: function (path, fields) {
         const form = document.createElement('form');
@@ -56,10 +142,20 @@ window.interop = {
         document.body.appendChild(form);
         form.submit();
     },
-    uploadFiles: function (posturl, folder, name) {
-        var files = document.getElementById(name + 'FileInput').files;
-        var progressinfo = document.getElementById(name + 'ProgressInfo');
-        var progressbar = document.getElementById(name + 'ProgressBar');
+    getFiles: function (id) {
+        var files = [];
+        var fileinput = document.getElementById(id);
+        if (fileinput !== null) {
+            for (var i = 0; i < fileinput.files.length; i++) {
+                files.push(fileinput.files[i].name);
+            }
+        }
+        return files;
+    },
+    uploadFiles: function (posturl, folder, id) {
+        var files = document.getElementById(id + 'FileInput').files;
+        var progressinfo = document.getElementById(id + 'ProgressInfo');
+        var progressbar = document.getElementById(id + 'ProgressBar');
         var filename = '';
 
         for (var i = 0; i < files.length; i++) {
@@ -111,5 +207,53 @@ window.interop = {
                 request.send(data);
             }
         }
+    },
+    createQuill: function (
+        quillElement, toolBar, readOnly,
+        placeholder, theme, debugLevel) {
+
+        Quill.register('modules/blotFormatter', QuillBlotFormatter.default);
+
+        var options = {
+            debug: debugLevel,
+            modules: {
+                toolbar: toolBar,
+                blotFormatter: {}
+            },
+            placeholder: placeholder,
+            readOnly: readOnly,
+            theme: theme
+        };
+
+        new Quill(quillElement, options);
+    },
+    getQuillContent: function (editorElement) {
+        return JSON.stringify(editorElement.__quill.getContents());
+    },
+    getQuillText: function (editorElement) {
+        return editorElement.__quill.getText();
+    },
+    getQuillHTML: function (editorElement) {
+        return editorElement.__quill.root.innerHTML;
+    },
+    loadQuillContent: function (editorElement, editorContent) {
+        return editorElement.__quill.root.innerHTML = editorContent;
+    },
+    enableQuillEditor: function (editorElement, mode) {
+        editorElement.__quill.enable(mode);
+    },
+    insertQuillImage: function (quillElement, imageURL) {
+        var Delta = Quill.import('delta');
+        editorIndex = 0;
+
+        if (quillElement.__quill.getSelection() !== null) {
+            editorIndex = quillElement.__quill.getSelection().index;
+        }
+
+        return quillElement.__quill.updateContents(
+            new Delta()
+                .retain(editorIndex)
+                .insert({ image: imageURL },
+                    { alt: imageURL }));
     }
 };

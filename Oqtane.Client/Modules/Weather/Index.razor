@@ -1,5 +1,3 @@
-@using Microsoft.AspNetCore.Components.Web
-@using Oqtane.Modules
 @using Oqtane.Modules.Weather.Services
 @namespace Oqtane.Modules.Weather
 @inherits ModuleBase
@@ -34,11 +32,11 @@ else
 }
 
 @code {
-    WeatherForecast[] forecasts;
+    private WeatherForecast[] forecasts;
 
     protected override async Task OnInitializedAsync()
     {
         WeatherForecastService forecastservice = new WeatherForecastService();
-        forecasts = await forecastservice.GetForecastAsync(DateTime.Now);
+        forecasts = await forecastservice.GetForecastAsync(DateTime.UtcNow);
     }
 }

@@ -1,0 +1,136 @@
+﻿@namespace Oqtane.Modules.Controls
+@inherits ModuleBase
+@inject IJSRuntime JsRuntime
+
+@if (_filemanagervisible)
+{
+    <FileManager @ref="_fileManager" Filter="@Constants.ImageFiles" />
+    @((MarkupString)_message)
+    <br />
+}
+<div class="row justify-content-center">
+    <button type="button" class="btn btn-success" @onclick="InsertImage">Insert Image</button>
+    @if (_filemanagervisible)
+    {
+        @((MarkupString)"&nbsp;&nbsp;")
+        <button type="button" class="btn btn-secondary" @onclick="CloseFileManager">Close</button>
+    }
+</div>
+<div class="row">
+    <div class ="col">
+        <div @ref="@_toolBar">
+            @ToolbarContent
+        </div>
+        <div @ref="@_editorElement">
+        </div>
+    </div>
+</div>
+
+@code {
+    private ElementReference _editorElement;
+    private ElementReference _toolBar;
+    private bool _filemanagervisible = false;
+    private FileManager _fileManager;
+    private string _message = string.Empty;
+
+    [Parameter]
+    public RenderFragment ToolbarContent { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; } = false;
+
+    [Parameter]
+    public string Placeholder { get; set; } = "Enter Your Content...";
+
+    [Parameter]
+    public string Theme { get; set; } = "snow";
+
+    [Parameter]
+    public string DebugLevel { get; set; } = "info";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await RichTextEditorInterop.CreateEditor(
+                JsRuntime,
+                _editorElement,
+                _toolBar,
+                ReadOnly,
+                Placeholder,
+                Theme,
+                DebugLevel);
+        }
+    }
+
+    public async Task<string> GetText()
+    {
+        return await RichTextEditorInterop.GetText(
+            JsRuntime,
+            _editorElement);
+    }
+
+    public async Task<string> GetHtml()
+    {
+        return await RichTextEditorInterop.GetHtml(
+            JsRuntime,
+            _editorElement);
+    }
+
+    public async Task<string> GetContent()
+    {
+        return await RichTextEditorInterop.GetContent(
+            JsRuntime,
+            _editorElement);
+    }
+
+    public async Task LoadContent(string content)
+    {
+        await RichTextEditorInterop.LoadEditorContent(
+            JsRuntime,
+            _editorElement, content);
+    }
+
+    public async Task EnableEditor(bool mode)
+    {
+        await RichTextEditorInterop.EnableEditor(
+            JsRuntime,
+            _editorElement, mode);
+    }
+
+    public async Task InsertImage()
+    {
+        if (_filemanagervisible)
+        {
+            var fileid = _fileManager.GetFileId();
+            if (fileid != -1)
+            {
+                await RichTextEditorInterop.InsertImage(
+                    JsRuntime,
+                    _editorElement, ContentUrl(fileid));
+                _filemanagervisible = false;
+                _message = string.Empty;
+            }
+            else
+            {
+                _message = "<br /><div class=\"alert alert-warning\" role=\"alert\">You Must Select An Image To Insert</div>";
+            }
+        }
+        else
+        {
+            _filemanagervisible = true;
+            _message = string.Empty;
+        }
+        
+        StateHasChanged();
+    }
+
+    public void CloseFileManager()
+    {
+        _filemanagervisible = false;
+        _message = string.Empty;
+        
+        StateHasChanged();
+    }
+
+}
