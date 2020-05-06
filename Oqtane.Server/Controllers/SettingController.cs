@@ -10,7 +10,7 @@ using Oqtane.Repository;
 
 namespace Oqtane.Controllers
 {
-    [Route("{site}/api/[controller]")]
+    [Route("{alias}/api/[controller]")]
     public class SettingController : Controller
     {
         private readonly ISettingRepository _settings;
@@ -123,7 +123,7 @@ namespace Oqtane.Controllers
             }
             switch (entityName)
             {
-                case EntityNames.Host:
+                case EntityNames.Tenant:
                     authorized = User.IsInRole(Constants.HostRole);
                     break;
                 case EntityNames.Site:
