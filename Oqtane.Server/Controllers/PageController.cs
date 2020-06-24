@@ -124,6 +124,16 @@ namespace Oqtane.Controllers
                     page = _pages.AddPage(page);
                     _syncManager.AddSyncEvent(_tenants.GetTenant().TenantId, EntityNames.Site, page.SiteId);
                     _logger.Log(LogLevel.Information, this, LogFunction.Create, "Page Added {Page}", page);
+
+                    if (!page.EditMode)
+                    {
+                        var modules = _modules.GetModules(page.SiteId).Where(item => item.AllPages).ToList();
+                        foreach (Module module in modules)
+                        {
+                            var pageModule = _pageModules.GetPageModules(page.SiteId).FirstOrDefault(item => item.ModuleId == module.ModuleId);
+                            _pageModules.AddPageModule(new PageModule { PageId = page.PageId, ModuleId = pageModule.ModuleId, Title = pageModule.Title, Pane = pageModule.Pane, Order = pageModule.Order, ContainerType = pageModule.ContainerType });
+                        }
+                    }
                 }
                 else
                 {
@@ -156,10 +166,11 @@ namespace Oqtane.Controllers
                 page.EditMode = false;
                 page.ThemeType = parent.ThemeType;
                 page.LayoutType = parent.LayoutType;
+                page.DefaultContainerType = parent.DefaultContainerType;
                 page.Icon = parent.Icon;
                 page.Permissions = new List<Permission> {
-                    new Permission(PermissionNames.View, userid, true),
-                    new Permission(PermissionNames.Edit, userid, true)
+                    new Permission(PermissionNames.View, int.Parse(userid), true),
+                    new Permission(PermissionNames.Edit, int.Parse(userid), true)
                 }.EncodePermissions();
                 page.IsPersonalizable = false;
                 page.UserId = int.Parse(userid);
@@ -174,9 +185,10 @@ namespace Oqtane.Controllers
                     module.SiteId = page.SiteId;
                     module.PageId = page.PageId;
                     module.ModuleDefinitionName = pm.Module.ModuleDefinitionName;
+                    module.AllPages = false;
                     module.Permissions = new List<Permission> {
-                        new Permission(PermissionNames.View, userid, true),
-                        new Permission(PermissionNames.Edit, userid, true)
+                        new Permission(PermissionNames.View, int.Parse(userid), true),
+                        new Permission(PermissionNames.Edit, int.Parse(userid), true)
                     }.EncodePermissions();
                     module = _modules.AddModule(module);
 

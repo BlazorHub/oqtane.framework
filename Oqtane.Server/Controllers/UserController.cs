@@ -57,7 +57,7 @@ namespace Oqtane.Controllers
                 user.SiteId = int.Parse(siteid);
                 user.Roles = GetUserRoles(user.UserId, user.SiteId);
             }
-            return user;
+            return Filter(user);
         }
 
         // GET api/<controller>/name/x?siteid=x
@@ -69,6 +69,29 @@ namespace Oqtane.Controllers
             {
                 user.SiteId = int.Parse(siteid);
                 user.Roles = GetUserRoles(user.UserId, user.SiteId);
+            }
+            return Filter(user);
+        }
+
+        private User Filter(User user)
+        {
+            if (user != null && !User.IsInRole(Constants.AdminRole) && User.Identity.Name?.ToLower() != user.Username.ToLower())
+            {
+                user.DisplayName = "";
+                user.Email = "";
+                user.PhotoFileId = null;
+                user.LastLoginOn = DateTime.MinValue;
+                user.LastIPAddress = "";
+                user.Roles = "";
+                user.CreatedBy = "";
+                user.CreatedOn = DateTime.MinValue;
+                user.ModifiedBy = "";
+                user.ModifiedOn = DateTime.MinValue;
+                user.DeletedBy = "";
+                user.DeletedOn = DateTime.MinValue;
+                user.IsDeleted = false;
+                user.Password = "";
+                user.IsAuthenticated = false;
             }
             return user;
         }
@@ -125,7 +148,7 @@ namespace Oqtane.Controllers
                             notification.SiteId = user.SiteId;
                             notification.FromUserId = null;
                             notification.ToUserId = newUser.UserId;
-                            notification.ToEmail = "";
+                            notification.ToEmail = newUser.Email;
                             notification.Subject = "User Account Verification";
                             string token = await _identityUserManager.GenerateEmailConfirmationTokenAsync(identityuser);
                             string url = HttpContext.Request.Scheme + "://" + _tenants.GetAlias().Name + "/login?name=" + user.Username + "&token=" + WebUtility.UrlEncode(token);
@@ -134,6 +157,7 @@ namespace Oqtane.Controllers
                             notification.CreatedOn = DateTime.UtcNow;
                             notification.IsDelivered = false;
                             notification.DeliveredOn = null;
+                            notification.SendOn = DateTime.UtcNow;
                             _notifications.AddNotification(notification);
                         }
 
@@ -362,6 +386,7 @@ namespace Oqtane.Controllers
                     notification.CreatedOn = DateTime.UtcNow;
                     notification.IsDelivered = false;
                     notification.DeliveredOn = null;
+                    notification.SendOn = DateTime.UtcNow;
                     _notifications.AddNotification(notification);
                     _logger.Log(LogLevel.Information, this, LogFunction.Security, "Password Reset Notification Sent For {Username}", user.Username);
                 }
